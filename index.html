@@ -7,11 +7,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #0e0f0c; --surface: #161714; --surface2: #1d1e1a;
-      --fg: #eceae4; --muted: #9a978c; --subtle: #6e6c64;
-      --accent: #b8c9a6; --accent-fg: #0e0f0c;
-      --good: #8fba7a; --bad: #c45c4a; --warn: #c4a35a;
-      --border: rgba(236,234,228,.12);
+      --bg: #14212c; --surface: #2F455C; --surface2: #3a5470;
+      --fg: #eaf4fb; --muted: #9fb4c7; --subtle: #6f8399;
+      --accent: #1DCDFE; --accent-fg: #14212c;
+      --good: #21D0B2; --bad: #ff6b6b; --warn: #ffbe55;
+      --border: rgba(234,244,251,.12);
     }
     * { box-sizing: border-box; }
     body {
@@ -69,7 +69,7 @@
     .seg button.on { background: var(--accent); color: var(--accent-fg); }
     table { width: 100%; border-collapse: collapse; font-size: .875rem; }
     th { text-align: left; color: var(--muted); font-weight: 500; padding: .5rem .5rem .5rem 0; border-bottom: 1px solid var(--border); }
-    td { padding: .6rem .5rem .6rem 0; border-bottom: 1px solid rgba(236,234,228,.06); font-variant-numeric: tabular-nums; }
+    td { padding: .6rem .5rem .6rem 0; border-bottom: 1px solid rgba(234,244,251,.06); font-variant-numeric: tabular-nums; }
     .right { text-align: right; }
     .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); } .accent { color: var(--accent); }
     .ver { border-radius: .75rem; padding: 1.1rem; margin: .75rem 0; }
@@ -88,7 +88,7 @@
     .type-seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface2); border-radius: .5rem; padding: .2rem; }
     .type-seg button { min-height: 38px; border: 0; border-radius: .4rem; background: transparent; color: var(--muted); font: 500 13px inherit; cursor: pointer; }
     .type-seg button.on-gasto { background: var(--bad); color: #fff; }
-    .type-seg button.on-ingreso { background: var(--good); color: #0e0f0c; }
+    .type-seg button.on-ingreso { background: var(--good); color: #14212c; }
   </style>
 </head>
 <body>
@@ -165,7 +165,7 @@ const CATS = {
   ingreso: ["Sueldo","Freelance","Venta","Otro ingreso"],
   gasto: ["Vivienda","Comida","Transporte","Servicios","Salud","Ocio","Educación","Otro gasto"]
 };
-const CATCOLORS = ["#b8c9a6","#c4a35a","#c45c4a","#8fba7a","#6e93c4","#a67cc4","#c4788f","#9a978c","#7ac4b0","#c4a5c4","#e0a96d","#7a9ec4"];
+const CATCOLORS = ["#1DCDFE","#ffbe55","#ff6b6b","#21D0B2","#6e93c4","#a67cc4","#c4788f","#9fb4c7","#7ac4b0","#c4a5c4","#e0a96d","#7a9ec4"];
 function catColor(cat){ const all=[...CATS.ingreso,...CATS.gasto]; return CATCOLORS[all.indexOf(cat)%CATCOLORS.length]; }
 let fMonth = null, fType = "gasto";
 let lastCardData = null;
@@ -213,11 +213,11 @@ function renderTracker(){
     new Chart(document.getElementById("chT"), {
       type:"line",
       data:{ labels:series.map(s=>s.l), datasets:[
-        {label:"Nominal", data:series.map(s=>s.nom), borderColor:"#9a978c", borderDash:[4,4], tension:.3, pointRadius:0},
-        {label:"Real (hoy)", data:series.map(s=>s.real), borderColor:"#b8c9a6", tension:.3, fill:false}
+        {label:"Nominal", data:series.map(s=>s.nom), borderColor:"#9fb4c7", borderDash:[4,4], tension:.3, pointRadius:0},
+        {label:"Real (hoy)", data:series.map(s=>s.real), borderColor:"#1DCDFE", tension:.3, fill:false}
       ]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9a978c"}}},
-        scales:{ x:{ticks:{color:"#6e6c64"}, grid:{color:"#1d1e1a"}}, y:{ticks:{color:"#6e6c64", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#1d1e1a"}} } }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9fb4c7"}}},
+        scales:{ x:{ticks:{color:"#6f8399"}, grid:{color:"#3a5470"}}, y:{ticks:{color:"#6f8399", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#3a5470"}} } }
     });
   }
 }
@@ -345,11 +345,11 @@ function renderFinanzas(){
     new Chart(document.getElementById("chF"), {
       type:"bar",
       data:{ labels:trendMonths.map(lbl), datasets:[
-        {label:"Ingresos", data:trendData.map(d=>d.ing), backgroundColor:"#8fba7a", borderRadius:4},
-        {label:"Gastos", data:trendData.map(d=>d.gas), backgroundColor:"#c45c4a", borderRadius:4}
+        {label:"Ingresos", data:trendData.map(d=>d.ing), backgroundColor:"#21D0B2", borderRadius:4},
+        {label:"Gastos", data:trendData.map(d=>d.gas), backgroundColor:"#ff6b6b", borderRadius:4}
       ]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9a978c"}}},
-        scales:{ x:{ticks:{color:"#6e6c64"}, grid:{display:false}}, y:{ticks:{color:"#6e6c64", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#1d1e1a"}} } }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9fb4c7"}}},
+        scales:{ x:{ticks:{color:"#6f8399"}, grid:{display:false}}, y:{ticks:{color:"#6f8399", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#3a5470"}} } }
     });
     const catEl=document.getElementById("chCat");
     if(catEl){
@@ -360,7 +360,7 @@ function renderFinanzas(){
         new Chart(catEl, {
           type:"doughnut",
           data:{ labels:cats, datasets:[{ data:cats.map(c=>byCat[c]), backgroundColor:cats.map(catColor), borderWidth:0 }] },
-          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{color:"#9a978c", boxWidth:10, padding:8}}} }
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{color:"#9fb4c7", boxWidth:10, padding:8}}} }
         });
       }
     }
@@ -386,23 +386,23 @@ function shareCard(){
   const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
   const ctx=cv.getContext("2d");
   const grad=ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,"#161714"); grad.addColorStop(1,"#0e0f0c");
+  grad.addColorStop(0,"#2F455C"); grad.addColorStop(1,"#14212c");
   ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle="#b8c9a6"; roundRect(ctx,80,90,110,110,24); ctx.fill();
-  ctx.fillStyle="#0e0f0c"; ctx.font="600 56px Georgia, serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle="#1DCDFE"; roundRect(ctx,80,90,110,110,24); ctx.fill();
+  ctx.fillStyle="#14212c"; ctx.font="600 56px Georgia, serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillText("M",135,150);
   ctx.textAlign="left"; ctx.textBaseline="alphabetic";
-  ctx.fillStyle="#eceae4"; ctx.font="500 46px Georgia, serif";
+  ctx.fillStyle="#eaf4fb"; ctx.font="500 46px Georgia, serif";
   ctx.fillText("MeAlcanza", 215, 130);
-  ctx.fillStyle="#9a978c"; ctx.font="30px sans-serif";
+  ctx.fillStyle="#9fb4c7"; ctx.font="30px sans-serif";
   ctx.fillText("Poder adquisitivo real · Argentina", 215, 175);
-  ctx.fillStyle="#6e6c64"; ctx.font="28px sans-serif";
+  ctx.fillStyle="#6f8399"; ctx.font="28px sans-serif";
   ctx.fillText(rangeLbl, 80, 300);
-  ctx.fillStyle=good?"#8fba7a":"#c45c4a"; ctx.font="700 170px Georgia, serif";
+  ctx.fillStyle=good?"#21D0B2":"#ff6b6b"; ctx.font="700 170px Georgia, serif";
   ctx.fillText((tot>=0?"+":"−")+Math.abs(tot).toFixed(1).replace(".",",")+"%", 80, 500);
-  ctx.fillStyle="#eceae4"; ctx.font="38px sans-serif";
+  ctx.fillStyle="#eaf4fb"; ctx.font="38px sans-serif";
   wrapText(ctx, good?"Gané poder de compra real frente a la inflación.":"Perdí poder de compra real frente a la inflación.", 80, 600, 900, 48);
-  ctx.fillStyle="#6e6c64"; ctx.font="26px sans-serif";
+  ctx.fillStyle="#6f8399"; ctx.font="26px sans-serif";
   ctx.fillText("Inflación interanual "+IA.toString().replace(".",",")+"% · IPC INDEC", 80, H-90);
   ctx.fillText("¿Me alcanza?", 80, H-50);
   cv.toBlob(blob=>{
@@ -509,9 +509,9 @@ function renderDatos(){
   if(window.Chart){
     new Chart(document.getElementById("chI"), {
       type:"bar",
-      data:{ labels:recent.map(lbl), datasets:[{ data:recent.map(m=>IPC[m]), backgroundColor:"#b8c9a6", borderRadius:4 }] },
+      data:{ labels:recent.map(lbl), datasets:[{ data:recent.map(m=>IPC[m]), backgroundColor:"#1DCDFE", borderRadius:4 }] },
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-        scales:{ x:{ticks:{color:"#6e6c64", maxRotation:45}, grid:{display:false}}, y:{ticks:{color:"#6e6c64"}, grid:{color:"#1d1e1a"}} } }
+        scales:{ x:{ticks:{color:"#6f8399", maxRotation:45}, grid:{display:false}}, y:{ticks:{color:"#6f8399"}, grid:{color:"#3a5470"}} } }
     });
   }
 }
