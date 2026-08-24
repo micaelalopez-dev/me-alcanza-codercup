@@ -7,11 +7,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #14212c; --surface: #2F455C; --surface2: #3a5470;
-      --fg: #eaf4fb; --muted: #9fb4c7; --subtle: #6f8399;
-      --accent: #1DCDFE; --accent-fg: #14212c;
-      --good: #21D0B2; --bad: #ff6b6b; --warn: #ffbe55;
-      --border: rgba(234,244,251,.12);
+      --bg: #0A0F1E; --surface: #1B2A41; --surface2: #28374F;
+      --fg: #E2E8F0; --muted: #94A3B8; --subtle: #64748B;
+      --accent: #3B82F6; --accent-fg: #FFFFFF;
+      --good: #10B981; --bad: #EF4444; --warn: #F59E0B;
+      --border: rgba(226,232,240,.12);
     }
     * { box-sizing: border-box; }
     body {
@@ -69,13 +69,14 @@
     .seg button.on { background: var(--accent); color: var(--accent-fg); }
     table { width: 100%; border-collapse: collapse; font-size: .875rem; }
     th { text-align: left; color: var(--muted); font-weight: 500; padding: .5rem .5rem .5rem 0; border-bottom: 1px solid var(--border); }
-    td { padding: .6rem .5rem .6rem 0; border-bottom: 1px solid rgba(234,244,251,.06); font-variant-numeric: tabular-nums; }
+    td { padding: .6rem .5rem .6rem 0; border-bottom: 1px solid rgba(226,232,240,.06); font-variant-numeric: tabular-nums; }
     .right { text-align: right; }
     .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); } .accent { color: var(--accent); }
     .ver { border-radius: .75rem; padding: 1.1rem; margin: .75rem 0; }
     .ver.good { background: color-mix(in oklab, var(--good) 12%, transparent); }
     .ver.bad { background: color-mix(in oklab, var(--bad) 12%, transparent); }
     .ver.warn { background: color-mix(in oklab, var(--warn) 12%, transparent); }
+    .ver.accent { background: color-mix(in oklab, var(--accent) 12%, transparent); }
     .hidden { display: none; }
     footer { text-align: center; color: var(--subtle); font-size: .75rem; padding: 1.5rem 1rem 2.5rem; }
     canvas { max-width: 100%; }
@@ -88,7 +89,7 @@
     .type-seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface2); border-radius: .5rem; padding: .2rem; }
     .type-seg button { min-height: 38px; border: 0; border-radius: .4rem; background: transparent; color: var(--muted); font: 500 13px inherit; cursor: pointer; }
     .type-seg button.on-gasto { background: var(--bad); color: #fff; }
-    .type-seg button.on-ingreso { background: var(--good); color: #14212c; }
+    .type-seg button.on-ingreso { background: var(--good); color: #0A0F1E; }
   </style>
 </head>
 <body>
@@ -109,16 +110,16 @@
   </header>
   <div class="wrap">
     <nav>
-      <button class="on" data-tab="tracker" onclick="tab('tracker')">Tracker</button>
+      <button class="on" data-tab="alcanza" onclick="tab('alcanza')">Cargá tu sueldo</button>
       <button data-tab="finanzas" onclick="tab('finanzas')">Finanzas</button>
-      <button data-tab="alcanza" onclick="tab('alcanza')">¿Me alcanza?</button>
+      <button data-tab="tracker" onclick="tab('tracker')">Tracker</button>
       <button data-tab="cuotas" onclick="tab('cuotas')">Costo real cuotas</button>
       <button data-tab="datos" onclick="tab('datos')">Datos IPC</button>
     </nav>
     <main style="padding:1.25rem 0">
-      <section id="panel-tracker"></section>
+      <section id="panel-alcanza"></section>
       <section id="panel-finanzas" class="hidden"></section>
-      <section id="panel-alcanza" class="hidden"></section>
+      <section id="panel-tracker" class="hidden"></section>
       <section id="panel-cuotas" class="hidden"></section>
       <section id="panel-datos" class="hidden"></section>
     </main>
@@ -156,6 +157,30 @@ function resolveC(mode,contado,n,cuota,tnaP,cft){
   if(tnaP>0) return french(contado, tnaP/100/12, n);
   return contado/n;
 }
+// Referencias oficiales INDEC. Actualizar estos valores cuando el INDEC publique
+// nuevos informes de Canasta Básica (mensual) y de Distribución del Ingreso / EPH (trimestral).
+const INDEC_REF = {
+  periodoCBT: "jul. 2026",
+  fuenteCBT: "INDEC, Canasta Básica Total, Gran Buenos Aires",
+  cbaAdultoEq: 229131,     // Canasta Básica Alimentaria por adulto equivalente (línea de indigencia)
+  cbtAdultoEq: 506381,     // Canasta Básica Total por adulto equivalente (línea de pobreza)
+  periodoIngresos: "1er trim. 2026",
+  fuenteIngresos: "INDEC, EPH, distribución del ingreso per cápita familiar",
+  ingresoPromedioPC: 728008,   // ingreso per cápita familiar promedio, población total
+  medianaDecil10: 2081317      // mediana de ingresos del decil 10 (10% de mayores ingresos)
+};
+function situacionEconomica(ingreso){
+  if(!ingreso) return null;
+  if(ingreso < INDEC_REF.cbtAdultoEq) return { cat:"Pobreza", tone:"bad",
+    det:`Por debajo de la Canasta Básica Total por adulto equivalente (${ars(INDEC_REF.cbtAdultoEq)}, ${INDEC_REF.fuenteCBT}, ${INDEC_REF.periodoCBT}).` };
+  if(ingreso < INDEC_REF.ingresoPromedioPC) return { cat:"Clase baja / sectores de menores ingresos", tone:"warn",
+    det:`Entre la línea de pobreza y el ingreso per cápita familiar promedio (${ars(INDEC_REF.ingresoPromedioPC)}, ${INDEC_REF.fuenteIngresos}, ${INDEC_REF.periodoIngresos}).` };
+  if(ingreso < INDEC_REF.medianaDecil10) return { cat:"Clase media", tone:"accent",
+    det:`Entre el ingreso per cápita promedio y la mediana del decil de mayores ingresos (${ars(INDEC_REF.medianaDecil10)}, ${INDEC_REF.fuenteIngresos}, ${INDEC_REF.periodoIngresos}).` };
+  return { cat:"Clase alta", tone:"good",
+    det:`Igual o por encima de la mediana del decil 10 de ingresos (${INDEC_REF.fuenteIngresos}, ${INDEC_REF.periodoIngresos}).` };
+}
+
 let salaries = JSON.parse(localStorage.getItem("mealcanza_salaries")||"{}");
 function saveS(){ localStorage.setItem("mealcanza_salaries", JSON.stringify(salaries)); }
 
@@ -165,13 +190,14 @@ const CATS = {
   ingreso: ["Sueldo","Freelance","Venta","Otro ingreso"],
   gasto: ["Vivienda","Comida","Transporte","Servicios","Salud","Ocio","Educación","Otro gasto"]
 };
-const CATCOLORS = ["#1DCDFE","#ffbe55","#ff6b6b","#21D0B2","#6e93c4","#a67cc4","#c4788f","#9fb4c7","#7ac4b0","#c4a5c4","#e0a96d","#7a9ec4"];
+const CATCOLORS = ["#3B82F6","#F59E0B","#EF4444","#10B981","#6e93c4","#a67cc4","#c4788f","#94A3B8","#7ac4b0","#c4a5c4","#e0a96d","#7a9ec4"];
 function catColor(cat){ const all=[...CATS.ingreso,...CATS.gasto]; return CATCOLORS[all.indexOf(cat)%CATCOLORS.length]; }
-let fMonth = null, fType = "gasto";
+const SUBTYPES = ["Fijo","Variable","Hormiga"];
+let fMonth = null, fType = "gasto", fSubtype = "Variable";
 let lastCardData = null;
 
 function tab(name){
-  ["tracker","finanzas","alcanza","cuotas","datos"].forEach(t=>{
+  ["alcanza","finanzas","tracker","cuotas","datos"].forEach(t=>{
     document.getElementById("panel-"+t).classList.toggle("hidden", t!==name);
     document.querySelector("nav button[data-tab='"+t+"']").classList.toggle("on", t===name);
   });
@@ -185,39 +211,43 @@ function tab(name){
 function renderTracker(){
   const keys=Object.keys(salaries).sort();
   const last=keys[keys.length-1];
-  const series=keys.map(m=>({l:lbl(m), nom:salaries[m].amount, real:real(salaries[m].amount,m)}));
-  const dlt=series.length>=2? (series.at(-1).real/series.at(-2).real-1)*100 : null;
-  const tot=series.length>=2? (series.at(-1).real/series[0].real-1)*100 : null;
-  lastCardData = tot==null? null : {tot, rangeLbl: lbl(keys[0])+" → "+lbl(keys.at(-1))};
+  const sit = last? situacionEconomica(salaries[last].amount) : null;
+  const balAll=ledger.reduce((s,t)=>s+(t.type==="ingreso"?t.amount:-t.amount),0);
+  const totalIng=ledger.filter(t=>t.type==="ingreso").reduce((s,t)=>s+t.amount,0);
+  const totalGas=ledger.filter(t=>t.type==="gasto").reduce((s,t)=>s+t.amount,0);
   document.getElementById("panel-tracker").innerHTML = `
     <div class="card">
-      <h2>Tracker económico</h2>
-      <p class="lead">Tu poder de compra mes a mes contra inflación oficial INDEC. Queda en este dispositivo.</p>
-      <div class="grid g3">
-        <div class="stat"><p>Último sueldo</p><b>${last?ars(salaries[last].amount):"—"}</b></div>
-        <div class="stat"><p>Cambio real (último mes)</p><b class="${dlt==null?"":dlt>=0?"good":"bad"}">${dlt==null?"—":pct(dlt)}</b></div>
-        <div class="stat"><p>Inflación interanual</p><b class="accent">33,8%</b></div>
-      </div>
-      <div class="chart"><canvas id="chT"></canvas></div>
-      <button class="btn" onclick="tab('alcanza')">Cargar sueldo</button>
-      <button class="btn btn2" style="margin-left:.4rem" onclick="tab('cuotas')">Costo de cuotas</button>
+      <h2>Situación económica estimada</h2>
+      ${sit?`
+        <p style="font-size:1.5rem;margin:.2rem 0" class="${sit.tone}">${sit.cat}</p>
+        <p class="lead">Estimación orientativa a partir de tu último ingreso registrado (${ars(salaries[last].amount)}). No constituye una clasificación socioeconómica individual: puede variar según composición del hogar, cantidad de integrantes e ingresos totales del grupo familiar.</p>
+        <p class="hint">${sit.det}</p>`
+        :`<p class="lead">Cargá tu sueldo en la pestaña “Cargá tu sueldo” para ver una referencia orientativa de tu situación económica según datos oficiales del INDEC.</p>
+        <button class="btn" onclick="tab('alcanza')">Cargar sueldo</button>`}
     </div>
-    ${tot==null?"":`<div class="card" style="text-align:center">
-      <p class="sub" style="text-transform:uppercase;letter-spacing:.06em">Poder de compra</p>
-      <p class="lead">${lbl(keys[0])} → ${lbl(keys.at(-1))}</p>
-      <p style="font-family:Georgia,serif;font-size:2.4rem;margin:.4rem 0" class="${tot>=0?"good":"bad"}">${pct(tot)}</p>
-      <p class="lead">${tot>=0?"Ganaste":"Perdiste"} poder de compra real vs inflación</p>
-      <button class="btn btn2" onclick="shareCard()">Descargar tarjeta para compartir</button>
-    </div>`}`;
-  if(series.length && window.Chart){
-    new Chart(document.getElementById("chT"), {
+    <div class="card">
+      <h3>Evolución de ingresos, gastos y saldo</h3>
+      <p class="lead">Combina tu sueldo cargado en “¿Me alcanza?” y los movimientos registrados en Finanzas, mes a mes.</p>
+      <div class="grid g3">
+        <div class="stat"><p>Ingresos totales</p><b class="good">${ars(totalIng)}</b></div>
+        <div class="stat"><p>Gastos totales</p><b class="bad">${ars(totalGas)}</b></div>
+        <div class="stat"><p>Saldo disponible</p><b class="${balAll>=0?"good":"bad"}">${ars(balAll)}</b></div>
+      </div>
+      <div class="chart"><canvas id="chEvo"></canvas></div>
+      <button class="btn btn2" onclick="tab('finanzas')">Ir a Finanzas</button>
+    </div>`;
+  if(window.Chart){
+    const trendMonths=monthOpts().slice(0,6).reverse();
+    const trendData=trendMonths.map(m=>txTotals(m));
+    new Chart(document.getElementById("chEvo"), {
       type:"line",
-      data:{ labels:series.map(s=>s.l), datasets:[
-        {label:"Nominal", data:series.map(s=>s.nom), borderColor:"#9fb4c7", borderDash:[4,4], tension:.3, pointRadius:0},
-        {label:"Real (hoy)", data:series.map(s=>s.real), borderColor:"#1DCDFE", tension:.3, fill:false}
+      data:{ labels:trendMonths.map(lbl), datasets:[
+        {label:"Ingresos", data:trendData.map(d=>d.ing), borderColor:"#10B981", backgroundColor:"#10B981", tension:.3},
+        {label:"Gastos", data:trendData.map(d=>d.gas), borderColor:"#EF4444", backgroundColor:"#EF4444", tension:.3},
+        {label:"Saldo", data:trendData.map(d=>d.bal), borderColor:"#3B82F6", backgroundColor:"#3B82F6", borderDash:[4,4], tension:.3}
       ]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9fb4c7"}}},
-        scales:{ x:{ticks:{color:"#6f8399"}, grid:{color:"#3a5470"}}, y:{ticks:{color:"#6f8399", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#3a5470"}} } }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#94A3B8"}}},
+        scales:{ x:{ticks:{color:"#64748B"}, grid:{color:"#28374F"}}, y:{ticks:{color:"#64748B", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#28374F"}} } }
     });
   }
 }
@@ -231,6 +261,12 @@ function monthOpts(){
 function renderAlcanza(){
   const opts=monthOpts().map(m=>`<option value="${m}">${lbl(m)}${IPC[m]!=null?" · IPC "+IPC[m].toFixed(1).replace(".",",")+"%":""}</option>`).join("");
   const keys=Object.keys(salaries).sort();
+  const last=keys[keys.length-1];
+  const series=keys.map(m=>({l:lbl(m), nom:salaries[m].amount, real:real(salaries[m].amount,m)}));
+  const dlt=series.length>=2? (series.at(-1).real/series.at(-2).real-1)*100 : null;
+  const tot=series.length>=2? (series.at(-1).real/series[0].real-1)*100 : null;
+  lastCardData = tot==null? null : {tot, rangeLbl: lbl(keys[0])+" → "+lbl(keys.at(-1))};
+  const sit = last? situacionEconomica(salaries[last].amount) : null;
   let rows=""; let prev=null;
   keys.forEach(m=>{
     const nom=salaries[m].amount, r=real(nom,m);
@@ -241,15 +277,39 @@ function renderAlcanza(){
   });
   document.getElementById("panel-alcanza").innerHTML = `
     <div class="card">
-      <h2>¿Me alcanza?</h2>
-      <p class="lead">Cargá tu sueldo neto. Lo deflactamos con IPC INDEC.</p>
+      <h2>Cargá tu sueldo</h2>
+      <p class="lead">Cargá tu sueldo neto mensual: es tu ingreso disponible. Lo comparamos contra la inflación oficial (IPC INDEC) para saber si tu poder de compra sube o baja.</p>
       <div class="grid g2">
         <label><span>Mes</span><select id="s-m">${opts}</select></label>
         <label><span>Sueldo neto ($)</span><input id="s-a" type="number" min="0" placeholder="850000"></label>
-        <label><span>Gastos del mes (opcional)</span><input id="s-e" type="number" min="0"></label>
       </div>
       <button class="btn" style="margin-top:1rem" onclick="addS()">Guardar mes</button>
+      <p class="hint" style="margin-top:.9rem">Los <b>gastos</b> ya no se cargan acá: se registran desde <b>Finanzas</b>, clasificados como fijos (alquiler, servicios, cuotas, suscripciones), variables (comida, transporte, compras, ocio) u hormiga (gastos chicos y frecuentes que, sumados, pesan). Cada gasto que cargues ahí descuenta automáticamente tu saldo disponible.</p>
+      ${sit?`
+      <div class="ver ${sit.tone}" style="margin-top:1rem">
+        <p class="sub">Situación económica estimada</p>
+        <p style="font-size:1.4rem;margin:.2rem 0" class="${sit.tone}">${sit.cat}</p>
+        <p class="lead">Según tus ingresos declarados (${ars(salaries[last].amount)}) y los datos de referencia del INDEC, te encontrás aproximadamente dentro de esta categoría. ${sit.det}</p>
+        <p class="hint">Estimación orientativa individual, no una clasificación socioeconómica. Puede variar según composición del hogar, cantidad de integrantes e ingresos totales del grupo familiar.</p>
+      </div>`:""}
     </div>
+    ${series.length?`
+    <div class="card">
+      <h3>Tu poder de compra</h3>
+      <div class="grid g3">
+        <div class="stat"><p>Último sueldo</p><b>${ars(salaries[last].amount)}</b></div>
+        <div class="stat"><p>Cambio real (último mes)</p><b class="${dlt==null?"":dlt>=0?"good":"bad"}">${dlt==null?"—":pct(dlt)}</b></div>
+        <div class="stat"><p>Inflación interanual</p><b class="accent">33,8%</b></div>
+      </div>
+      <div class="chart"><canvas id="chT"></canvas></div>
+    </div>`:""}
+    ${tot==null?"":`<div class="card" style="text-align:center">
+      <p class="sub" style="text-transform:uppercase;letter-spacing:.06em">Poder de compra</p>
+      <p class="lead">${lbl(keys[0])} → ${lbl(keys.at(-1))}</p>
+      <p style="font-family:Georgia,serif;font-size:2.4rem;margin:.4rem 0" class="${tot>=0?"good":"bad"}">${pct(tot)}</p>
+      <p class="lead">${tot>=0?"Ganaste":"Perdiste"} poder de compra real vs inflación</p>
+      <button class="btn btn2" onclick="shareCard()">Descargar tarjeta para compartir</button>
+    </div>`}
     <div class="card">
       <h3>¿Cuánto es realmente ese aumento?</h3>
       <p class="lead">Traducimos el % nominal con la interanual actual (33,8%).</p>
@@ -262,18 +322,37 @@ function renderAlcanza(){
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <h3>Historial de sueldos</h3>
-        ${keys.length?`<button class="btn btn-ghost" onclick="if(confirm('¿Borrar todo?')){salaries={};saveS();renderAlcanza();renderTracker();}">Borrar todo</button>`:""}
+        ${keys.length?`<button class="btn btn-ghost" onclick="if(confirm('¿Borrar todo?')){salaries={};saveS();ledger=ledger.filter(t=>!t.auto);saveL();renderAlcanza();}">Borrar todo</button>`:""}
       </div>
       ${keys.length?`<div style="overflow-x:auto"><table><thead><tr><th>Mes</th><th class="right">Nominal</th><th class="right">Real (hoy)</th><th class="right">Δ real</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<p class="lead" style="text-align:center;padding:1.5rem 0">Todavía no cargaste sueldos.</p>`}
     </div>`;
+  if(series.length && window.Chart){
+    new Chart(document.getElementById("chT"), {
+      type:"line",
+      data:{ labels:series.map(s=>s.l), datasets:[
+        {label:"Nominal", data:series.map(s=>s.nom), borderColor:"#94A3B8", borderDash:[4,4], tension:.3, pointRadius:0},
+        {label:"Real (hoy)", data:series.map(s=>s.real), borderColor:"#3B82F6", tension:.3, fill:false}
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#94A3B8"}}},
+        scales:{ x:{ticks:{color:"#64748B"}, grid:{color:"#28374F"}}, y:{ticks:{color:"#64748B", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#28374F"}} } }
+    });
+  }
 }
 function addS(){
   const m=document.getElementById("s-m").value, a=+document.getElementById("s-a").value;
   if(!a) return alert("Ingresá un sueldo válido");
-  const e=+document.getElementById("s-e").value||null;
-  salaries[m]={amount:a, expenses:e}; saveS(); renderAlcanza();
+  salaries[m]={amount:a}; saveS();
+  ledger=ledger.filter(t=>!(t.auto && t.ym===m));
+  ledger.push({id:"auto-"+m, ym:m, type:"ingreso", category:"Sueldo", amount:a, note:"Sueldo cargado", auto:true});
+  saveL();
+  renderAlcanza();
 }
-function delS(m){ delete salaries[m]; saveS(); renderAlcanza(); }
+function delS(m){
+  delete salaries[m]; saveS();
+  ledger=ledger.filter(t=>!(t.auto && t.ym===m));
+  saveL();
+  renderAlcanza();
+}
 function traducir(){
   const n=+document.getElementById("r-n").value;
   const realP=((1+n/100)/(1+IA/100)-1)*100;
@@ -295,12 +374,13 @@ function renderFinanzas(){
   const {ing,gas,bal,items}=txTotals(fMonth);
   const balAll=ledger.reduce((s,t)=>s+(t.type==="ingreso"?t.amount:-t.amount),0);
   const catOptsHtml=CATS[fType].map(c=>`<option value="${c}">${c}</option>`).join("");
-  const rows=[...items].sort((a,b)=>b.id-a.id).map(t=>`
+  const subtypeOptsHtml=SUBTYPES.map(s=>`<option value="${s}" ${s===fSubtype?"selected":""}>${s}</option>`).join("");
+  const rows=[...items].sort((a,b)=>{ if(!!a.auto!==!!b.auto) return a.auto?-1:1; return b.id>a.id?1:-1; }).map(t=>`
     <tr>
-      <td><span class="pill" style="--pc:${catColor(t.category)}">${t.category}</span></td>
+      <td><span class="pill" style="--pc:${catColor(t.category)}">${t.category}</span>${t.subtype?` <span class="hint" style="display:inline">· ${t.subtype}</span>`:""}</td>
       <td>${t.note?t.note:"—"}</td>
       <td class="right ${t.type==="ingreso"?"good":"bad"}">${t.type==="ingreso"?"+":"−"}${ars(t.amount)}</td>
-      <td class="right"><button class="btn btn-ghost" onclick="delT(${t.id})">Quitar</button></td>
+      <td class="right">${t.auto?`<span class="hint">desde ¿Me alcanza?</span>`:`<button class="btn btn-ghost" onclick="delT(${t.id})">Quitar</button>`}</td>
     </tr>`).join("");
   document.getElementById("panel-finanzas").innerHTML=`
     <div class="card">
@@ -323,15 +403,17 @@ function renderFinanzas(){
       </div>
       <div class="addrow">
         <label><span>Categoría</span><select id="f-cat">${catOptsHtml}</select></label>
+        ${fType==="gasto"?`<label><span>Tipo de gasto</span><select id="f-subtype" onchange="fSubtype=this.value">${subtypeOptsHtml}</select></label>`:""}
         <label><span>Monto ($)</span><input id="f-amount" type="number" min="0" placeholder="0"></label>
         <label style="flex:2"><span>Nota (opcional)</span><input id="f-note" type="text" placeholder="Ej: alquiler"></label>
         <button class="btn" onclick="addT()">Agregar</button>
       </div>
+      ${fType==="gasto"?`<p class="hint" style="margin-top:.75rem"><b>Fijo</b>: alquiler, servicios, cuotas, suscripciones. <b>Variable</b>: comida, transporte, compras, ocio. <b>Hormiga</b>: gastos chicos y frecuentes (cafés, delivery, kiosco) que suman.</p>`:""}
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <h3>Movimientos de ${lbl(fMonth)}</h3>
-        ${items.length?`<button class="btn btn-ghost" onclick="if(confirm('¿Borrar los movimientos de este mes?')){ledger=ledger.filter(t=>t.ym!==fMonth);saveL();renderFinanzas();}">Borrar mes</button>`:""}
+        ${items.length?`<button class="btn btn-ghost" onclick="if(confirm('¿Borrar los movimientos cargados este mes (no borra el sueldo)?')){ledger=ledger.filter(t=>!(t.ym===fMonth && !t.auto));saveL();renderFinanzas();}">Borrar mes</button>`:""}
       </div>
       ${items.length?`
         <div class="grid g2">
@@ -345,11 +427,11 @@ function renderFinanzas(){
     new Chart(document.getElementById("chF"), {
       type:"bar",
       data:{ labels:trendMonths.map(lbl), datasets:[
-        {label:"Ingresos", data:trendData.map(d=>d.ing), backgroundColor:"#21D0B2", borderRadius:4},
-        {label:"Gastos", data:trendData.map(d=>d.gas), backgroundColor:"#ff6b6b", borderRadius:4}
+        {label:"Ingresos", data:trendData.map(d=>d.ing), backgroundColor:"#10B981", borderRadius:4},
+        {label:"Gastos", data:trendData.map(d=>d.gas), backgroundColor:"#EF4444", borderRadius:4}
       ]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9fb4c7"}}},
-        scales:{ x:{ticks:{color:"#6f8399"}, grid:{display:false}}, y:{ticks:{color:"#6f8399", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#3a5470"}} } }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#94A3B8"}}},
+        scales:{ x:{ticks:{color:"#64748B"}, grid:{display:false}}, y:{ticks:{color:"#64748B", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#28374F"}} } }
     });
     const catEl=document.getElementById("chCat");
     if(catEl){
@@ -360,7 +442,7 @@ function renderFinanzas(){
         new Chart(catEl, {
           type:"doughnut",
           data:{ labels:cats, datasets:[{ data:cats.map(c=>byCat[c]), backgroundColor:cats.map(catColor), borderWidth:0 }] },
-          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{color:"#9fb4c7", boxWidth:10, padding:8}}} }
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{color:"#94A3B8", boxWidth:10, padding:8}}} }
         });
       }
     }
@@ -371,7 +453,9 @@ function addT(){
   const amount=+document.getElementById("f-amount").value;
   const note=document.getElementById("f-note").value.trim();
   if(!amount) return alert("Ingresá un monto válido");
-  ledger.push({id:Date.now(), ym:fMonth, type:fType, category, amount, note});
+  const tx={id:Date.now(), ym:fMonth, type:fType, category, amount, note};
+  if(fType==="gasto") tx.subtype=fSubtype;
+  ledger.push(tx);
   saveL(); renderFinanzas();
 }
 function delT(id){ ledger=ledger.filter(t=>t.id!==id); saveL(); renderFinanzas(); }
@@ -386,23 +470,23 @@ function shareCard(){
   const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
   const ctx=cv.getContext("2d");
   const grad=ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,"#2F455C"); grad.addColorStop(1,"#14212c");
+  grad.addColorStop(0,"#1B2A41"); grad.addColorStop(1,"#0A0F1E");
   ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle="#1DCDFE"; roundRect(ctx,80,90,110,110,24); ctx.fill();
-  ctx.fillStyle="#14212c"; ctx.font="600 56px Georgia, serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle="#3B82F6"; roundRect(ctx,80,90,110,110,24); ctx.fill();
+  ctx.fillStyle="#FFFFFF"; ctx.font="600 56px Georgia, serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillText("M",135,150);
   ctx.textAlign="left"; ctx.textBaseline="alphabetic";
-  ctx.fillStyle="#eaf4fb"; ctx.font="500 46px Georgia, serif";
+  ctx.fillStyle="#E2E8F0"; ctx.font="500 46px Georgia, serif";
   ctx.fillText("MeAlcanza", 215, 130);
-  ctx.fillStyle="#9fb4c7"; ctx.font="30px sans-serif";
+  ctx.fillStyle="#94A3B8"; ctx.font="30px sans-serif";
   ctx.fillText("Poder adquisitivo real · Argentina", 215, 175);
-  ctx.fillStyle="#6f8399"; ctx.font="28px sans-serif";
+  ctx.fillStyle="#64748B"; ctx.font="28px sans-serif";
   ctx.fillText(rangeLbl, 80, 300);
-  ctx.fillStyle=good?"#21D0B2":"#ff6b6b"; ctx.font="700 170px Georgia, serif";
+  ctx.fillStyle=good?"#10B981":"#EF4444"; ctx.font="700 170px Georgia, serif";
   ctx.fillText((tot>=0?"+":"−")+Math.abs(tot).toFixed(1).replace(".",",")+"%", 80, 500);
-  ctx.fillStyle="#eaf4fb"; ctx.font="38px sans-serif";
+  ctx.fillStyle="#E2E8F0"; ctx.font="38px sans-serif";
   wrapText(ctx, good?"Gané poder de compra real frente a la inflación.":"Perdí poder de compra real frente a la inflación.", 80, 600, 900, 48);
-  ctx.fillStyle="#6f8399"; ctx.font="26px sans-serif";
+  ctx.fillStyle="#64748B"; ctx.font="26px sans-serif";
   ctx.fillText("Inflación interanual "+IA.toString().replace(".",",")+"% · IPC INDEC", 80, H-90);
   ctx.fillText("¿Me alcanza?", 80, H-50);
   cv.toBlob(blob=>{
@@ -509,14 +593,14 @@ function renderDatos(){
   if(window.Chart){
     new Chart(document.getElementById("chI"), {
       type:"bar",
-      data:{ labels:recent.map(lbl), datasets:[{ data:recent.map(m=>IPC[m]), backgroundColor:"#1DCDFE", borderRadius:4 }] },
+      data:{ labels:recent.map(lbl), datasets:[{ data:recent.map(m=>IPC[m]), backgroundColor:"#3B82F6", borderRadius:4 }] },
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-        scales:{ x:{ticks:{color:"#6f8399", maxRotation:45}, grid:{display:false}}, y:{ticks:{color:"#6f8399"}, grid:{color:"#3a5470"}} } }
+        scales:{ x:{ticks:{color:"#64748B", maxRotation:45}, grid:{display:false}}, y:{ticks:{color:"#64748B"}, grid:{color:"#28374F"}} } }
     });
   }
 }
 
-tab("tracker");
+tab("alcanza");
 </script>
 </body>
 </html>
