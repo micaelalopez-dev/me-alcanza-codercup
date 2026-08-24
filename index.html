@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MeAlcanza — Poder adquisitivo real</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0e0f0c; --surface: #161714; --surface2: #1d1e1a;
+      --fg: #eceae4; --muted: #9a978c; --subtle: #6e6c64;
+      --accent: #b8c9a6; --accent-fg: #0e0f0c;
+      --good: #8fba7a; --bad: #c45c4a; --warn: #c4a35a;
+      --border: rgba(236,234,228,.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+      background: var(--bg); color: var(--fg); min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: color-mix(in oklab, var(--bg) 85%, transparent);
+      backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
+    }
+    .wrap { max-width: 42rem; margin: 0 auto; padding: 0 1rem; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 0; }
+    .logo {
+      width: 2.25rem; height: 2.25rem; border-radius: .5rem; background: var(--accent);
+      color: var(--accent-fg); display: grid; place-items: center; font-family: Georgia, serif; font-weight: 600;
+    }
+    h1 { font-size: 1.1rem; margin: 0; font-family: Georgia, serif; font-weight: 500; }
+    .sub { font-size: .75rem; color: var(--muted); margin: 0; }
+    nav { display: flex; gap: .25rem; overflow-x: auto; padding: 1rem 0 .25rem; }
+    nav button {
+      min-height: 44px; border: 0; border-radius: .5rem; padding: 0 .75rem;
+      background: transparent; color: var(--muted); font: 500 14px inherit; cursor: pointer; white-space: nowrap;
+    }
+    nav button.on { background: var(--accent); color: var(--accent-fg); }
+    .card {
+      background: var(--surface); border-radius: 1.25rem; padding: 1.25rem 1.4rem;
+      box-shadow: 0 0 0 1px var(--border); margin-bottom: 1rem;
+    }
+    h2 { font-family: Georgia, serif; font-weight: 500; font-size: 1.25rem; margin: 0 0 .4rem; }
+    h3 { font-size: 1.05rem; margin: 0 0 .4rem; font-weight: 500; }
+    p.lead { color: var(--muted); font-size: .9rem; line-height: 1.5; margin: 0 0 1rem; }
+    .grid { display: grid; gap: 1rem; }
+    @media (min-width: 640px) { .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: 1fr 1fr 1fr; } }
+    label { display: block; font-size: .85rem; color: var(--muted); font-weight: 500; }
+    label span { display: block; margin-bottom: .4rem; }
+    input, select {
+      width: 100%; min-height: 44px; border: 0; border-radius: .5rem;
+      background: var(--bg); color: var(--fg); padding: 0 .75rem; font: inherit;
+      box-shadow: 0 0 0 1px var(--border); font-variant-numeric: tabular-nums;
+    }
+    .hint { display: block; font-size: .75rem; color: var(--subtle); margin-top: .35rem; font-weight: 400; }
+    .btn {
+      min-height: 44px; border: 0; border-radius: .5rem; padding: 0 1.1rem;
+      background: var(--accent); color: var(--accent-fg); font: 500 14px inherit; cursor: pointer;
+    }
+    .btn2 { background: var(--surface2); color: var(--fg); box-shadow: 0 0 0 1px var(--border); }
+    .btn-ghost { background: transparent; color: var(--bad); }
+    .stat { background: var(--surface2); border-radius: .75rem; padding: 1rem; }
+    .stat p { margin: 0; font-size: .75rem; color: var(--muted); }
+    .stat b { display: block; margin-top: .25rem; font-size: 1.35rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface2); border-radius: .75rem; padding: .25rem; margin: 1rem 0 .6rem; }
+    .seg button { min-height: 44px; border: 0; border-radius: .5rem; background: transparent; color: var(--muted); font: 500 14px inherit; cursor: pointer; }
+    .seg button.on { background: var(--accent); color: var(--accent-fg); }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th { text-align: left; color: var(--muted); font-weight: 500; padding: .5rem .5rem .5rem 0; border-bottom: 1px solid var(--border); }
+    td { padding: .6rem .5rem .6rem 0; border-bottom: 1px solid rgba(236,234,228,.06); font-variant-numeric: tabular-nums; }
+    .right { text-align: right; }
+    .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); } .accent { color: var(--accent); }
+    .ver { border-radius: .75rem; padding: 1.1rem; margin: .75rem 0; }
+    .ver.good { background: color-mix(in oklab, var(--good) 12%, transparent); }
+    .ver.bad { background: color-mix(in oklab, var(--bad) 12%, transparent); }
+    .ver.warn { background: color-mix(in oklab, var(--warn) 12%, transparent); }
+    .hidden { display: none; }
+    footer { text-align: center; color: var(--subtle); font-size: .75rem; padding: 1.5rem 1rem 2.5rem; }
+    canvas { max-width: 100%; }
+    .chart { height: 16rem; margin: 1rem 0; }
+    .chart-sm { height: 13rem; margin: 1rem 0; }
+    .pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .78rem; color: var(--fg); }
+    .pill::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--pc, var(--accent)); display: inline-block; flex: none; }
+    .addrow { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
+    .addrow label { flex: 1; min-width: 130px; }
+    .type-seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface2); border-radius: .5rem; padding: .2rem; }
+    .type-seg button { min-height: 38px; border: 0; border-radius: .4rem; background: transparent; color: var(--muted); font: 500 13px inherit; cursor: pointer; }
+    .type-seg button.on-gasto { background: var(--bad); color: #fff; }
+    .type-seg button.on-ingreso { background: var(--good); color: #0e0f0c; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap row">
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <div class="logo">M</div>
+        <div>
+          <h1>MeAlcanza</h1>
+          <p class="sub">Poder adquisitivo real · Argentina</p>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <p class="sub">IPC INDEC jul 26</p>
+        <p class="accent" style="margin:0;font-weight:500">33,8% interanual</p>
+      </div>
+    </div>
+  </header>
+  <div class="wrap">
+    <nav>
+      <button class="on" data-tab="tracker" onclick="tab('tracker')">Tracker</button>
+      <button data-tab="finanzas" onclick="tab('finanzas')">Finanzas</button>
+      <button data-tab="alcanza" onclick="tab('alcanza')">¿Me alcanza?</button>
+      <button data-tab="cuotas" onclick="tab('cuotas')">Costo real cuotas</button>
+      <button data-tab="datos" onclick="tab('datos')">Datos IPC</button>
+    </nav>
+    <main style="padding:1.25rem 0">
+      <section id="panel-tracker"></section>
+      <section id="panel-finanzas" class="hidden"></section>
+      <section id="panel-alcanza" class="hidden"></section>
+      <section id="panel-cuotas" class="hidden"></section>
+      <section id="panel-datos" class="hidden"></section>
+    </main>
+  </div>
+  <footer>Datos oficiales INDEC. Se guarda solo en este dispositivo. La inflación futura es una estimación.</footer>
+
+<script>
+const IPC = {"2023-08":12.4,"2023-09":12.7,"2023-10":8.3,"2023-11":12.8,"2023-12":25.5,"2024-01":20.6,"2024-02":13.2,"2024-03":11.0,"2024-04":8.8,"2024-05":4.2,"2024-06":4.6,"2024-07":4.0,"2024-08":4.2,"2024-09":3.5,"2024-10":2.7,"2024-11":2.4,"2024-12":2.7,"2025-01":2.2,"2025-02":2.4,"2025-03":3.7,"2025-04":2.8,"2025-05":1.5,"2025-06":1.6,"2025-07":1.9,"2025-08":1.9,"2025-09":2.1,"2025-10":2.3,"2025-11":2.5,"2025-12":2.8,"2026-01":2.9,"2026-02":2.9,"2026-03":3.4,"2026-04":2.6,"2026-05":2.1,"2026-06":1.9,"2026-07":2.1};
+const MONTHS = Object.keys(IPC).sort();
+const LAST = MONTHS[MONTHS.length-1];
+const IA = 33.8;
+const NAMES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const idx = {};
+(function(){ let x=1; for (const m of MONTHS){ idx[m]=x; x*=1+IPC[m]/100; } })();
+function lbl(ym){ const [y,m]=ym.split("-"); return NAMES[+m-1]+" "+y.slice(2); }
+function ars(n){ if(!isFinite(n)) return "—"; return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(n); }
+function pct(n,d=1){ if(!isFinite(n)) return "—"; return (n>0?"+":"")+n.toFixed(d).replace(".",",")+"%"; }
+function pctA(n,d=1){ return n.toFixed(d).replace(".",",")+"%"; }
+function real(nom, m){ return idx[m] ? nom * (idx[LAST]/idx[m]) : nom; }
+function french(P,r,n){ if(n<=0) return 0; if(Math.abs(r)<1e-12) return P/n; const f=Math.pow(1+r,n); return P*r*f/(f-1); }
+function vpAn(c,i,n){ if(Math.abs(i)<1e-12) return c*n; let s=0; for(let t=1;t<=n;t++) s+=c/Math.pow(1+i,t); return s; }
+function irr(P,c,n){ let lo=-0.5,hi=2; for(let k=0;k<80;k++){ const mid=(lo+hi)/2; if(vpAn(c,mid,n)>P) lo=mid; else hi=mid; } return (lo+hi)/2; }
+function tea(m){ return (Math.pow(1+m,12)-1)*100; }
+function tna(m){ return m*12*100; }
+function evalC({contado,n,cuota,inf}){
+  const i=inf/100, vp=vpAn(cuota,i,n), tot=cuota*n, ahorro=contado-vp, rI=((vp/contado)-1)*100, th=contado*0.02;
+  let v="indiferente"; if(ahorro>th) v="cuotas"; else if(ahorro<-th) v="contado";
+  const im=irr(contado,cuota,n);
+  return {cuota,n,tot,interes:tot-contado,vp,ahorro,im,tna:tna(im),tea:tea(im),infA:tea(i),rI,v};
+}
+function resolveC(mode,contado,n,cuota,tnaP,cft){
+  if(cuota>0) return cuota;
+  if(mode==="sin") return contado/n;
+  if(cft>0) return french(contado, Math.pow(1+cft/100,1/12)-1, n);
+  if(tnaP>0) return french(contado, tnaP/100/12, n);
+  return contado/n;
+}
+let salaries = JSON.parse(localStorage.getItem("mealcanza_salaries")||"{}");
+function saveS(){ localStorage.setItem("mealcanza_salaries", JSON.stringify(salaries)); }
+
+let ledger = JSON.parse(localStorage.getItem("mealcanza_ledger")||"[]");
+function saveL(){ localStorage.setItem("mealcanza_ledger", JSON.stringify(ledger)); }
+const CATS = {
+  ingreso: ["Sueldo","Freelance","Venta","Otro ingreso"],
+  gasto: ["Vivienda","Comida","Transporte","Servicios","Salud","Ocio","Educación","Otro gasto"]
+};
+const CATCOLORS = ["#b8c9a6","#c4a35a","#c45c4a","#8fba7a","#6e93c4","#a67cc4","#c4788f","#9a978c","#7ac4b0","#c4a5c4","#e0a96d","#7a9ec4"];
+function catColor(cat){ const all=[...CATS.ingreso,...CATS.gasto]; return CATCOLORS[all.indexOf(cat)%CATCOLORS.length]; }
+let fMonth = null, fType = "gasto";
+let lastCardData = null;
+
+function tab(name){
+  ["tracker","finanzas","alcanza","cuotas","datos"].forEach(t=>{
+    document.getElementById("panel-"+t).classList.toggle("hidden", t!==name);
+    document.querySelector("nav button[data-tab='"+t+"']").classList.toggle("on", t===name);
+  });
+  if(name==="tracker") renderTracker();
+  if(name==="finanzas") renderFinanzas();
+  if(name==="alcanza") renderAlcanza();
+  if(name==="cuotas") renderCuotas();
+  if(name==="datos") renderDatos();
+}
+
+function renderTracker(){
+  const keys=Object.keys(salaries).sort();
+  const last=keys[keys.length-1];
+  const series=keys.map(m=>({l:lbl(m), nom:salaries[m].amount, real:real(salaries[m].amount,m)}));
+  const dlt=series.length>=2? (series.at(-1).real/series.at(-2).real-1)*100 : null;
+  const tot=series.length>=2? (series.at(-1).real/series[0].real-1)*100 : null;
+  lastCardData = tot==null? null : {tot, rangeLbl: lbl(keys[0])+" → "+lbl(keys.at(-1))};
+  document.getElementById("panel-tracker").innerHTML = `
+    <div class="card">
+      <h2>Tracker económico</h2>
+      <p class="lead">Tu poder de compra mes a mes contra inflación oficial INDEC. Queda en este dispositivo.</p>
+      <div class="grid g3">
+        <div class="stat"><p>Último sueldo</p><b>${last?ars(salaries[last].amount):"—"}</b></div>
+        <div class="stat"><p>Cambio real (último mes)</p><b class="${dlt==null?"":dlt>=0?"good":"bad"}">${dlt==null?"—":pct(dlt)}</b></div>
+        <div class="stat"><p>Inflación interanual</p><b class="accent">33,8%</b></div>
+      </div>
+      <div class="chart"><canvas id="chT"></canvas></div>
+      <button class="btn" onclick="tab('alcanza')">Cargar sueldo</button>
+      <button class="btn btn2" style="margin-left:.4rem" onclick="tab('cuotas')">Costo de cuotas</button>
+    </div>
+    ${tot==null?"":`<div class="card" style="text-align:center">
+      <p class="sub" style="text-transform:uppercase;letter-spacing:.06em">Poder de compra</p>
+      <p class="lead">${lbl(keys[0])} → ${lbl(keys.at(-1))}</p>
+      <p style="font-family:Georgia,serif;font-size:2.4rem;margin:.4rem 0" class="${tot>=0?"good":"bad"}">${pct(tot)}</p>
+      <p class="lead">${tot>=0?"Ganaste":"Perdiste"} poder de compra real vs inflación</p>
+      <button class="btn btn2" onclick="shareCard()">Descargar tarjeta para compartir</button>
+    </div>`}`;
+  if(series.length && window.Chart){
+    new Chart(document.getElementById("chT"), {
+      type:"line",
+      data:{ labels:series.map(s=>s.l), datasets:[
+        {label:"Nominal", data:series.map(s=>s.nom), borderColor:"#9a978c", borderDash:[4,4], tension:.3, pointRadius:0},
+        {label:"Real (hoy)", data:series.map(s=>s.real), borderColor:"#b8c9a6", tension:.3, fill:false}
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9a978c"}}},
+        scales:{ x:{ticks:{color:"#6e6c64"}, grid:{color:"#1d1e1a"}}, y:{ticks:{color:"#6e6c64", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#1d1e1a"}} } }
+    });
+  }
+}
+
+function monthOpts(){
+  const now=new Date(), out=[];
+  for(let i=0;i<30;i++){ const d=new Date(now.getFullYear(), now.getMonth()-i,1);
+    const ym=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); out.push(ym); }
+  return out;
+}
+function renderAlcanza(){
+  const opts=monthOpts().map(m=>`<option value="${m}">${lbl(m)}${IPC[m]!=null?" · IPC "+IPC[m].toFixed(1).replace(".",",")+"%":""}</option>`).join("");
+  const keys=Object.keys(salaries).sort();
+  let rows=""; let prev=null;
+  keys.forEach(m=>{
+    const nom=salaries[m].amount, r=real(nom,m);
+    const d=prev==null?null:(r/prev-1)*100; prev=r;
+    rows+=`<tr><td>${lbl(m)}</td><td class="right">${ars(nom)}</td><td class="right">${ars(r)}</td>
+      <td class="right ${d==null?"":d>=0?"good":"bad"}">${d==null?"—":pct(d)}</td>
+      <td class="right"><button class="btn btn-ghost" onclick="delS('${m}')">Quitar</button></td></tr>`;
+  });
+  document.getElementById("panel-alcanza").innerHTML = `
+    <div class="card">
+      <h2>¿Me alcanza?</h2>
+      <p class="lead">Cargá tu sueldo neto. Lo deflactamos con IPC INDEC.</p>
+      <div class="grid g2">
+        <label><span>Mes</span><select id="s-m">${opts}</select></label>
+        <label><span>Sueldo neto ($)</span><input id="s-a" type="number" min="0" placeholder="850000"></label>
+        <label><span>Gastos del mes (opcional)</span><input id="s-e" type="number" min="0"></label>
+      </div>
+      <button class="btn" style="margin-top:1rem" onclick="addS()">Guardar mes</button>
+    </div>
+    <div class="card">
+      <h3>¿Cuánto es realmente ese aumento?</h3>
+      <p class="lead">Traducimos el % nominal con la interanual actual (33,8%).</p>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end">
+        <label style="flex:1;min-width:140px"><span>Aumento nominal %</span><input id="r-n" type="number" step="0.1" value="15"></label>
+        <button class="btn" onclick="traducir()">Traducir</button>
+      </div>
+      <div id="r-out"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Historial de sueldos</h3>
+        ${keys.length?`<button class="btn btn-ghost" onclick="if(confirm('¿Borrar todo?')){salaries={};saveS();renderAlcanza();renderTracker();}">Borrar todo</button>`:""}
+      </div>
+      ${keys.length?`<div style="overflow-x:auto"><table><thead><tr><th>Mes</th><th class="right">Nominal</th><th class="right">Real (hoy)</th><th class="right">Δ real</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<p class="lead" style="text-align:center;padding:1.5rem 0">Todavía no cargaste sueldos.</p>`}
+    </div>`;
+}
+function addS(){
+  const m=document.getElementById("s-m").value, a=+document.getElementById("s-a").value;
+  if(!a) return alert("Ingresá un sueldo válido");
+  const e=+document.getElementById("s-e").value||null;
+  salaries[m]={amount:a, expenses:e}; saveS(); renderAlcanza();
+}
+function delS(m){ delete salaries[m]; saveS(); renderAlcanza(); }
+function traducir(){
+  const n=+document.getElementById("r-n").value;
+  const realP=((1+n/100)/(1+IA/100)-1)*100;
+  const cls=realP>1?"good":realP>-1?"warn":"bad";
+  const msg=realP>1?"Ganás poder de compra.":realP>-1?"Casi empatás.":"Perdés poder de compra. Es un aumento nominal, no real.";
+  document.getElementById("r-out").innerHTML=`<div class="ver ${cls}" style="margin-top:1rem"><p class="sub">Aumento real ≈</p><p style="font-size:2rem;margin:.2rem 0" class="${cls}">${pct(realP)}</p><p class="lead">${msg}</p></div>`;
+}
+
+function txTotals(ym){
+  const items=ledger.filter(t=>t.ym===ym);
+  const ing=items.filter(t=>t.type==="ingreso").reduce((s,t)=>s+t.amount,0);
+  const gas=items.filter(t=>t.type==="gasto").reduce((s,t)=>s+t.amount,0);
+  return {ing, gas, bal: ing-gas, items};
+}
+function renderFinanzas(){
+  if(!fMonth) fMonth=monthOpts()[0];
+  const months=monthOpts();
+  const monthOptsHtml=months.map(m=>`<option value="${m}" ${m===fMonth?"selected":""}>${lbl(m)}</option>`).join("");
+  const {ing,gas,bal,items}=txTotals(fMonth);
+  const balAll=ledger.reduce((s,t)=>s+(t.type==="ingreso"?t.amount:-t.amount),0);
+  const catOptsHtml=CATS[fType].map(c=>`<option value="${c}">${c}</option>`).join("");
+  const rows=[...items].sort((a,b)=>b.id-a.id).map(t=>`
+    <tr>
+      <td><span class="pill" style="--pc:${catColor(t.category)}">${t.category}</span></td>
+      <td>${t.note?t.note:"—"}</td>
+      <td class="right ${t.type==="ingreso"?"good":"bad"}">${t.type==="ingreso"?"+":"−"}${ars(t.amount)}</td>
+      <td class="right"><button class="btn btn-ghost" onclick="delT(${t.id})">Quitar</button></td>
+    </tr>`).join("");
+  document.getElementById("panel-finanzas").innerHTML=`
+    <div class="card">
+      <h2>Finanzas</h2>
+      <p class="lead">Registrá tus ingresos y gastos por mes para llevar un control claro de tu presupuesto.</p>
+      <label style="max-width:220px"><span>Mes</span><select id="f-monthsel" onchange="fMonth=this.value;renderFinanzas()">${monthOptsHtml}</select></label>
+      <div class="grid g3" style="margin-top:1rem">
+        <div class="stat"><p>Ingresos del mes</p><b class="good">${ars(ing)}</b></div>
+        <div class="stat"><p>Gastos del mes</p><b class="bad">${ars(gas)}</b></div>
+        <div class="stat"><p>Balance del mes</p><b class="${bal>=0?"good":"bad"}">${ars(bal)}</b></div>
+      </div>
+      <p class="hint" style="margin-top:.75rem">Balance acumulado (todos los meses): <b class="${balAll>=0?"good":"bad"}">${ars(balAll)}</b></p>
+      <div class="chart-sm"><canvas id="chF"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Agregar movimiento</h3>
+      <div class="type-seg" style="max-width:220px;margin-bottom:.9rem">
+        <button class="${fType==="gasto"?"on-gasto":""}" onclick="fType='gasto';renderFinanzas()">Gasto</button>
+        <button class="${fType==="ingreso"?"on-ingreso":""}" onclick="fType='ingreso';renderFinanzas()">Ingreso</button>
+      </div>
+      <div class="addrow">
+        <label><span>Categoría</span><select id="f-cat">${catOptsHtml}</select></label>
+        <label><span>Monto ($)</span><input id="f-amount" type="number" min="0" placeholder="0"></label>
+        <label style="flex:2"><span>Nota (opcional)</span><input id="f-note" type="text" placeholder="Ej: alquiler"></label>
+        <button class="btn" onclick="addT()">Agregar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Movimientos de ${lbl(fMonth)}</h3>
+        ${items.length?`<button class="btn btn-ghost" onclick="if(confirm('¿Borrar los movimientos de este mes?')){ledger=ledger.filter(t=>t.ym!==fMonth);saveL();renderFinanzas();}">Borrar mes</button>`:""}
+      </div>
+      ${items.length?`
+        <div class="grid g2">
+          <div style="overflow-x:auto"><table><thead><tr><th>Categoría</th><th>Nota</th><th class="right">Monto</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+          <div class="chart-sm"><canvas id="chCat"></canvas></div>
+        </div>`:`<p class="lead" style="text-align:center;padding:1.5rem 0">Todavía no cargaste movimientos este mes.</p>`}
+    </div>`;
+  if(window.Chart){
+    const trendMonths=monthOpts().slice(0,6).reverse();
+    const trendData=trendMonths.map(m=>txTotals(m));
+    new Chart(document.getElementById("chF"), {
+      type:"bar",
+      data:{ labels:trendMonths.map(lbl), datasets:[
+        {label:"Ingresos", data:trendData.map(d=>d.ing), backgroundColor:"#8fba7a", borderRadius:4},
+        {label:"Gastos", data:trendData.map(d=>d.gas), backgroundColor:"#c45c4a", borderRadius:4}
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:"#9a978c"}}},
+        scales:{ x:{ticks:{color:"#6e6c64"}, grid:{display:false}}, y:{ticks:{color:"#6e6c64", callback:v=>(v/1000).toFixed(0)+"k"}, grid:{color:"#1d1e1a"}} } }
+    });
+    const catEl=document.getElementById("chCat");
+    if(catEl){
+      const byCat={};
+      items.filter(t=>t.type==="gasto").forEach(t=>{ byCat[t.category]=(byCat[t.category]||0)+t.amount; });
+      const cats=Object.keys(byCat);
+      if(cats.length){
+        new Chart(catEl, {
+          type:"doughnut",
+          data:{ labels:cats, datasets:[{ data:cats.map(c=>byCat[c]), backgroundColor:cats.map(catColor), borderWidth:0 }] },
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{color:"#9a978c", boxWidth:10, padding:8}}} }
+        });
+      }
+    }
+  }
+}
+function addT(){
+  const category=document.getElementById("f-cat").value;
+  const amount=+document.getElementById("f-amount").value;
+  const note=document.getElementById("f-note").value.trim();
+  if(!amount) return alert("Ingresá un monto válido");
+  ledger.push({id:Date.now(), ym:fMonth, type:fType, category, amount, note});
+  saveL(); renderFinanzas();
+}
+function delT(id){ ledger=ledger.filter(t=>t.id!==id); saveL(); renderFinanzas(); }
+
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function wrapText(ctx,text,x,y,maxW,lh){ const words=text.split(" "); let line="",yy=y; for(const w of words){ const test=line+w+" "; if(ctx.measureText(test).width>maxW && line){ ctx.fillText(line,x,yy); line=w+" "; yy+=lh; } else line=test; } ctx.fillText(line,x,yy); return yy; }
+function shareCard(){
+  if(!lastCardData) return;
+  const {tot,rangeLbl}=lastCardData;
+  const good=tot>=0;
+  const W=1080,H=1350;
+  const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+  const ctx=cv.getContext("2d");
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,"#161714"); grad.addColorStop(1,"#0e0f0c");
+  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#b8c9a6"; roundRect(ctx,80,90,110,110,24); ctx.fill();
+  ctx.fillStyle="#0e0f0c"; ctx.font="600 56px Georgia, serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("M",135,150);
+  ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  ctx.fillStyle="#eceae4"; ctx.font="500 46px Georgia, serif";
+  ctx.fillText("MeAlcanza", 215, 130);
+  ctx.fillStyle="#9a978c"; ctx.font="30px sans-serif";
+  ctx.fillText("Poder adquisitivo real · Argentina", 215, 175);
+  ctx.fillStyle="#6e6c64"; ctx.font="28px sans-serif";
+  ctx.fillText(rangeLbl, 80, 300);
+  ctx.fillStyle=good?"#8fba7a":"#c45c4a"; ctx.font="700 170px Georgia, serif";
+  ctx.fillText((tot>=0?"+":"−")+Math.abs(tot).toFixed(1).replace(".",",")+"%", 80, 500);
+  ctx.fillStyle="#eceae4"; ctx.font="38px sans-serif";
+  wrapText(ctx, good?"Gané poder de compra real frente a la inflación.":"Perdí poder de compra real frente a la inflación.", 80, 600, 900, 48);
+  ctx.fillStyle="#6e6c64"; ctx.font="26px sans-serif";
+  ctx.fillText("Inflación interanual "+IA.toString().replace(".",",")+"% · IPC INDEC", 80, H-90);
+  ctx.fillText("¿Me alcanza?", 80, H-50);
+  cv.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="mealcanza-poder-de-compra.png";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }, "image/png");
+}
+
+let cuotaMode="sin";
+function renderCuotas(){
+  document.getElementById("panel-cuotas").innerHTML = `
+    <div class="card">
+      <h2>Costo real de las cuotas</h2>
+      <p class="lead">El cartel de “sin interés” a veces conviene (pagás con pesos más débiles) y a veces esconde un recargo. Con TNA o CFT medimos si la inflación se come el interés.</p>
+      <div class="seg" role="tablist">
+        <button class="${cuotaMode==="sin"?"on":""}" onclick="cuotaMode='sin';renderCuotas()">Sin interés</button>
+        <button class="${cuotaMode==="con"?"on":""}" onclick="cuotaMode='con';renderCuotas()">Con interés</button>
+      </div>
+      <p class="hint">${cuotaMode==="sin"?"Usá el precio de lista y la cuota que te cobran. Si cuota × n es mayor al contado, hay interés escondido.":"Cargá TNA o CFT del ticket, o la cuota cotizada. Sistema francés si no ingresás la cuota."}</p>
+      <div class="grid g2" style="margin-top:1rem">
+        <label><span>Precio de contado ($)</span><input id="c-p" type="number" value="450000"></label>
+        <label><span>Cantidad de cuotas</span><input id="c-n" type="number" value="12" min="1"></label>
+        ${cuotaMode==="con"?`
+          <label><span>TNA anual (%)</span><input id="c-tna" type="number" value="70" step="0.1"><small class="hint">Si también cargás CFT, el CFT manda para estimar la cuota.</small></label>
+          <label><span>CFT anual (%)</span><input id="c-cft" type="number" step="0.1" placeholder="Si está en el ticket"><small class="hint">Opcional.</small></label>
+        `:""}
+        <label><span>${cuotaMode==="sin"?"Valor de cada cuota ($)":"Cuota cotizada ($)"}</span><input id="c-c" type="number" placeholder="Opcional"><small class="hint" id="c-hint"></small></label>
+        <label><span>Inflación mensual esperada (%)</span><input id="c-i" type="number" value="2" step="0.1"><small class="hint">Promedio reciente del IPC ~2,0%.</small></label>
+      </div>
+      <p id="c-err" class="bad" style="font-size:.85rem"></p>
+      <button class="btn" style="margin-top:.75rem" onclick="calcC()">Calcular si conviene</button>
+    </div>
+    <div id="c-res"></div>
+    <div class="card" style="background:var(--surface2)">
+      <h3>Cómo se calcula</h3>
+      <p class="lead" style="font-size:.8rem">Cada cuota futura se descuenta por inflación: VP = Σ cuota / (1+i)^t. Si el VP es menor al contado, las cuotas te ahorran poder de compra. Con interés usamos sistema francés (TNA/12) o la tasa efectiva del CFT.</p>
+    </div>`;
+  updateHint();
+  ["c-p","c-n"].forEach(id=>document.getElementById(id).addEventListener("input", updateHint));
+}
+function updateHint(){
+  const p=+document.getElementById("c-p").value, n=+document.getElementById("c-n").value;
+  const h=document.getElementById("c-hint");
+  if(!h) return;
+  if(cuotaMode==="sin" && p&&n) h.textContent="Si fuera 0% puro: "+ars(p/n);
+  else if(cuotaMode==="con") h.textContent="Opcional. Si lo dejás vacío, la estimamos con TNA/CFT.";
+}
+function calcC(){
+  const contado=+document.getElementById("c-p").value;
+  const n=parseInt(document.getElementById("c-n").value,10);
+  const inf=+document.getElementById("c-i").value;
+  const cuotaIn=+document.getElementById("c-c").value||0;
+  const tnaP=document.getElementById("c-tna")? +document.getElementById("c-tna").value:0;
+  const cft=document.getElementById("c-cft")? +document.getElementById("c-cft").value:0;
+  const err=document.getElementById("c-err");
+  if(!contado||!n){ err.textContent="Completá precio de contado y cantidad de cuotas."; return; }
+  err.textContent="";
+  const cuota=resolveC(cuotaMode,contado,n,cuotaIn,tnaP,cft);
+  const r=evalC({contado,n,cuota,inf});
+  const tone=r.v==="cuotas"?"good":r.v==="contado"?"bad":"warn";
+  const title=r.v==="cuotas"?"Conviene en cuotas":r.v==="contado"?"Mejor de contado":"Casi indiferente";
+  const det=r.v==="cuotas"?`El valor presente de las cuotas es ${ars(Math.abs(r.ahorro))} más barato que pagar hoy.`
+    :r.v==="contado"?`Las cuotas te salen ${ars(Math.abs(r.ahorro))} más caras en pesos de hoy.`
+    :"La diferencia real es chica. Elegí según liquidez.";
+  document.getElementById("c-res").innerHTML=`
+    <div class="card">
+      <div class="grid g2">
+        <div class="stat"><p>Total a pagar</p><b>${ars(r.tot)}</b></div>
+        <div class="stat"><p>Valor presente (pesos de hoy)</p><b class="accent">${ars(r.vp)}</b></div>
+      </div>
+      <div class="ver ${tone}"><p class="sub">Veredicto</p><p style="font-size:1.6rem;margin:.2rem 0" class="${tone}">${title}</p><p class="lead">${det}</p></div>
+      <div class="grid g2">
+        <div class="stat"><p>${cuotaMode==="con"?"Interés nominal":"Recargo vs contado"}</p><b>${ars(r.interes)}</b></div>
+        <div class="stat"><p>Costo / ahorro real</p><b class="${r.ahorro>=0?"good":"bad"}">${r.ahorro>=0?"Ahorrás":"Te cuesta"} ${ars(Math.abs(r.ahorro))}</b></div>
+        <div class="stat"><p>TEA implícita</p><b>${pctA(r.tea)}</b></div>
+        <div class="stat"><p>Inflación anualizada</p><b>${pctA(r.infA)}</b></div>
+      </div>
+      <p class="lead" style="margin-top:1rem">Interés real (en pesos de hoy): <b class="${r.rI<=0?"good":"bad"}">${pct(r.rI)}</b>
+        ${r.rI<0?" — la inflación más que se come el interés.":" — todavía pagás un costo real por financiar."}</p>
+      <p class="hint">Contado ${ars(contado)} · cuota ${ars(r.cuota)} · TNA implícita ${pctA(r.tna)}</p>
+    </div>`;
+}
+
+function renderDatos(){
+  const recent=MONTHS.slice(-24);
+  const rows=[...recent].reverse().map(m=>{
+    const pos=MONTHS.indexOf(m); let ia=null;
+    if(pos>=12){ let f=1; for(let k=pos-11;k<=pos;k++) f*=1+IPC[MONTHS[k]]/100; ia=(f-1)*100; }
+    return `<tr><td>${lbl(m)}</td><td class="right">${IPC[m].toFixed(1).replace(".",",")}%</td><td class="right">${ia==null?"—":ia.toFixed(1).replace(".",",")+"%"}</td></tr>`;
+  }).join("");
+  document.getElementById("panel-datos").innerHTML=`
+    <div class="card">
+      <h2>Datos IPC INDEC</h2>
+      <p class="lead">Variación mensual del nivel general. Última actualización: julio 2026.</p>
+      <div class="chart"><canvas id="chI"></canvas></div>
+      <div style="max-height:20rem;overflow:auto">
+        <table><thead><tr><th>Mes</th><th class="right">Var. mensual</th><th class="right">Interanual</th></tr></thead><tbody>${rows}</tbody></table>
+      </div>
+      <p class="hint" style="margin-top:.75rem">Fuente: INDEC — IPC Nacional.</p>
+    </div>`;
+  if(window.Chart){
+    new Chart(document.getElementById("chI"), {
+      type:"bar",
+      data:{ labels:recent.map(lbl), datasets:[{ data:recent.map(m=>IPC[m]), backgroundColor:"#b8c9a6", borderRadius:4 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ x:{ticks:{color:"#6e6c64", maxRotation:45}, grid:{display:false}}, y:{ticks:{color:"#6e6c64"}, grid:{color:"#1d1e1a"}} } }
+    });
+  }
+}
+
+tab("tracker");
+</script>
+</body>
+</html>
